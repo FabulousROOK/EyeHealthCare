@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Eye Health Care</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    .hero-section {
+      background-color: #2E073F;
+      color: white;
+      padding: 80px 0;
+      text-align: center;
+    }
+
+    .services-section {
+      padding: 60px 0;
+    }
+    .testimonials-section {
+      background-color: #f8f9fa;
+      padding: 60px 0;
+    }
+    .footer {
+      background-color: #343a40;
+      color: white;
+      padding: 30px 0;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+
+<!-- Hero Section -->
+<section class="hero-section">
+  <div class="container">
+    <h1 class="display-4">Eye Health Care</h1>
+    <p class="lead">Providing you the best care for your eyes.</p>
+    <a href="#services" class="btn btn-primary btn-lg">Our Services</a>
+  </div>
+</section>
+
+<!-- Services Section -->
+<section id="services" class="services-section">
+  <div class="container">
+    <div class="text-center mb-5">
+      <h2>Our Services</h2>
+      <p>We provide a range of specialized eye care services</p>
+    </div>
+    <div class="row">
+      <div class="col-md-4">
+        <div class="card h-100">
+          <img src="{{ url_for('static', filename='images/index/service1.jpg') }}" class="card-img-top" alt="Service 1">
+          <div class="card-body">
+            <h5 class="card-title">Comprehensive Eye Exams</h5>
+            <p class="card-text">Detailed eye exams to assess your vision and overall eye health.</p>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-4">
+        <div class="card h-100">
+          <img src="{{ url_for('static', filename='images/index/service2.jpg') }}" class="card-img-top" alt="Service 2">
+          <div class="card-body">
+            <h5 class="card-title">Laser Eye Surgery</h5>
+            <p class="card-text">State-of-the-art laser treatments for vision correction.</p>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-4">
+        <div class="card h-100">
+          <img src="{{ url_for('static', filename='images/index/service3.jpg') }}" class="card-img-top" alt="Service 3">
+          <div class="card-body">
+            <h5 class="card-title">Pediatric Eye Care</h5>
+            <p class="card-text">Specialized care for children’s eye health and vision development.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="d-flex justify-content-center m-4">
+        <a href="#" class="btn btn-primary btn-lg">Channel a Specialist</a>
+    </div>
+  </div>
+</section>
+
+<!-- Testimonials Section -->
+<section class="testimonials-section">
+  <div class="container">
+    <div class="text-center mb-5">
+      <h2>Testimonials</h2>
+      <p>What our clients say about us</p>
+    </div>
+    <div class="row">
+      <div class="col-md-6">
+        <div class="card h-100">
+          <div class="card-body">
+            <blockquote class="blockquote">
+              <p>“The best eye care experience I’ve ever had. My vision has never been better!”</p>
+              <footer class="blockquote-footer">John Doe</footer>
+            </blockquote>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-6">
+        <div class="card h-100">
+          <div class="card-body">
+            <blockquote class="blockquote">
+              <p>“Great staff, excellent service, and state-of-the-art treatments. Highly recommend!”</p>
+              <footer class="blockquote-footer">Jane Smith</footer>
+            </blockquote>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Footer -->
+<footer class="footer">
+  <div class="container">
+    <p>&copy; 2024 Eye Health Care. All Rights Reserved.</p>
+    <p><a href="#" class="text-light">Privacy Policy</a> | <a href="#" class="text-light">Terms of Service</a></p>
+  </div>
+</footer>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
