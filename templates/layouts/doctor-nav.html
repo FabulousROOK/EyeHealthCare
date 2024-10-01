@@ -1,0 +1,82 @@
+<style>
+    .navbar {
+        background-color: white;
+        padding: 1rem;
+    }
+
+    .navbar .nav-link .navbar-brand {
+        color: #000;
+        font-weight: 500;
+        margin-right: 1rem;
+    }
+
+    .navbar .btn-primary {
+        background-color: #007bff;
+        border-color: #007bff;
+        border-radius: 30px;
+        padding: 0.5rem 1.5rem;
+        transition: background-color 0.3s;
+    }
+
+    .navbar .btn-outline-primary {
+        border-radius: 30px;
+        padding: 0.5rem 1.5rem;
+        transition: background-color 0.3s, color 0.3s;
+    }
+
+    .navbar .btn-primary:hover {
+        background-color: #0056b3;
+    }
+
+    .navbar .btn-outline-primary:hover {
+        background-color: #007bff;
+        color: #fff;
+    }
+
+    @media (max-width: 992px) {
+        .navbar .btn {
+            margin-top: 0.5rem;
+            width: 100%;
+        }
+
+    }
+</style>
+
+
+<!-- Navbar -->
+<nav class="navbar navbar-expand-lg navbar-light">
+    <div class="container">
+        <h2 class="navbar-brand" href="#">Eye Care</h2>
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav"
+            aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="navbarNav">
+            <ul class="navbar-nav ms-auto">
+                <li class="nav-item">
+                    <a class="nav-link" href="#">Home</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="#">Services</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="#">Products</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="#">Order Contacts</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="#">Contact</a>
+                </li>
+                <!-- Vertical Separator -->
+                <li class="nav-item d-flex align-items-center mx-2">
+                    <div style="border-left: 2px solid #ddd; height: 40px;"></div>
+                </li>
+                <!-- Login and Signup Options -->
+                <li class="nav-item">
+                    <a class="btn btn-primary ms-2" href="{{ url_for('logout') }}">Logout</a>
+                </li>
+            </ul>
+        </div>
+    </div>
+</nav>
