@@ -1,5 +1,6 @@
-from flask import Flask, render_template, url_for, redirect, request, session, flash, make_response
-from models import Patient, Doctor, Admin
+from flask import Flask, render_template, url_for, redirect, request, session, flash, make_response, jsonify
+from models import Patient, Doctor, Admin, Appointment
+from datetime import datetime
 
 from bson.objectid import ObjectId
 
@@ -32,8 +33,24 @@ def logout():
 @app.route('/doctor-home')
 def doctor_home():
     if 'doctor_id' in session:
-        return render_template('doctor/doctor-home.html')
+        doctor_id = session['doctor_id']
+        appointments = Doctor.get_appointments(doctor_id)
+        for appointment in appointments:
+            appointment['date'] = datetime.fromisoformat(appointment['date'])
+
+        return render_template('doctor/doctor-home.html', appointments=appointments)
     return redirect(url_for('index'))
+
+@app.route('/appointment-slots-fragment')
+def view_appointment_slots():
+    if 'doctor_id' in session:
+        doctor_id = session['doctor_id']
+        appointments = Doctor.get_appointments(doctor_id)
+        for appointment in appointments:
+            appointment['date'] = datetime.fromisoformat(appointment['date'])
+
+        return render_template('components/doctor/doctor-view-appointments.html', appointments=appointments)
+    
 
 
 @app.route('/patient-home')
@@ -48,6 +65,8 @@ def admin_home():
     if 'admin_id' in session:
         return render_template('admin/admin-home.html')
     return redirect(url_for('index'))
+
+
     
 
 
@@ -143,12 +162,32 @@ def doctor_register():
         hashed_password = Patient.hash_password(confirmpassword)
 
         doctor = Doctor(fullname, email, specialization, licensenumber, experience, clinicaddress, hashed_password)
-        doctor.save()
+        doctor.save_doctor()
         return redirect(url_for('doctor_login'))
 
     return render_template('doctor-register.html')
 
 
+@app.route('/create-appointment-slot', methods = ['GET', 'POST'])
+def create_appointment_slot():
+    if request.method == 'POST':
+        appointmentSlotName = request.form['appointmentSlotName']
+        appointmentType = request.form['appointmentType']
+        date = request.form['date']
+        time = request.form['time']
+        locationName = request.form['location']
+        max_bookings = int(request.form['maxBookings'])
+        doctor_id = session['doctor_id']
+
+        appointmentSlot = Appointment(doctor_id, appointmentSlotName, appointmentType, date, time, locationName, max_bookings)
+        appointmentSlot.save_appointments()
+        response = "Inserted"
+        return jsonify(response)
+
+        return redirect(url_for('doctor_home'))
+
+    return render_template('doctor-home.html')
+    
 
 if __name__ == '__main__':
     app.run(debug=True)

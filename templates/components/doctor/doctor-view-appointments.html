@@ -1,0 +1,45 @@
+{% for appointment in appointments %}
+
+
+
+<div class="card shadow-sm mb-4 rounded-4">
+    <div class="row g-0">
+        <!-- Date Section -->
+        <div
+            class="col-3 col-sm-2 text-center d-flex align-items-center justify-content-center flex-column p-3 rounded-start">
+            <p class="mb-0" style="font-size: 40px; font-weight: 700;">{{ appointment.date.strftime('%d') }}</p>
+            <p class="mb-0" style="font-size: 24px;">{{ appointment.date.strftime('%b') }}</p>
+        </div>
+
+        <!-- Event Details Section -->
+        <div class="col-7 col-sm-8">
+            <div class="card-body p-3">
+                <div class="d-flex justify-content-between align-items-center">
+                    <h5 class="card-title mb-1">{{ appointment.name }}</h5>
+                    <span class="badge rounded-pill text-bg-success" style="font-size: 12px;">Upcoming</span>
+                </div>
+                <p class="card-text text-muted mb-2"><i class="bi bi-clock"></i> From: {{ appointment.time }}</p>
+                <p class="card-text text-muted"><i class="bi bi-geo-alt"></i>At: {{ appointment.locationName }}
+                </p>
+            </div>
+        </div>
+
+        <!-- Action Buttons -->
+        <div class="col-2 d-flex align-items-center justify-content-center">
+            <div class="d-flex flex-column align-items-center gap-2">
+                <a href="" class="action-link">
+                    <svg class="bi">
+                        <use xlink:href="#bi-pencil" />
+                    </svg>
+                </a>
+                <a href="" class="action-link">
+                    <svg class="bi">
+                        <use xlink:href="#bi-trash3" />
+                    </svg>
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endfor %}
