@@ -5,10 +5,11 @@ from bson.objectid import ObjectId
 
 
 class Patient:
-    def __init__(self, fullName, email, password):
+    def __init__(self, fullName, email, password=None, profilepicturepath=None):
         self.fullName = fullName
         self.email = email
         self.password = password
+        self.profilepicturepath = profilepicturepath
     
     @staticmethod
     def db_connection():
@@ -46,6 +47,12 @@ class Patient:
     def get_all():
         patients = Patient.db_connection()
         return list(patients.find({}))
+    
+
+    def update(patient_id, udate_date):
+        patient = Patient.db_connection()
+        patient.update_one({'_id': patient_id}, {'$set': udate_date})
+
 
     @staticmethod
     def get_by_id(patient_id):
@@ -55,7 +62,7 @@ class Patient:
 
 
 class Doctor:
-    def __init__(self, fullName, email, specialization, licensenumber, experience, clinicaddress, password):
+    def __init__(self, fullName, email, specialization, licensenumber, experience, clinicaddress, password=None, profilepicturepath=None, status='Pending'):
         self.fullName = fullName
         self.email = email
         self.specialization = specialization
@@ -63,6 +70,8 @@ class Doctor:
         self.experience = experience
         self.clinicaddress = clinicaddress
         self.password = password
+        self.profilepicturepath = profilepicturepath
+        self.status = status
 
 
     
@@ -110,6 +119,10 @@ class Doctor:
     def get_by_id(doctor_id):
         doctors = Doctor.db_connection()
         return doctors.find_one({"_id": doctor_id})
+
+    def update(doctor_id, update_data):
+        doctor = Doctor.db_connection()
+        doctor.update_one({'_id': doctor_id}, {'$set': update_data})
     
 
     def create_appointment(self, name, type, date, time, locationName, max_bookings):
@@ -138,15 +151,26 @@ class Doctor:
 
 
 class Appointment:
-    def __init__(self, doctor_id, name, type, date, time, locationName, max_bookings):
-        self.doctor_id = doctor_id
-        self.name = name
-        self.type = type
-        self.date = date
-        self.time = time
-        self.locationName = locationName
-        self.max_bookings = max_bookings
-        self.bookings = []
+    def __init__(self, doctor_id=None, name=None, type=None, date=None, time=None, locationName=None, max_bookings=None, existing_appointment=None):
+        if existing_appointment:
+            self.doctor_id = existing_appointment['doctor_id'] if doctor_id is None else doctor_id
+            self.name = name or existing_appointment['name']
+            self.type = type or existing_appointment['type']
+            self.date = date or existing_appointment['date']
+            self.time = time or existing_appointment['time']
+            self.locationName = locationName or existing_appointment['locationName']
+            self.max_bookings = max_bookings or existing_appointment['max_bookings']
+            self.bookings = existing_appointment.get('bookings', [])
+
+        else:
+            self.doctor_id = doctor_id
+            self.name = name
+            self.type = type
+            self.date = date
+            self.time = time
+            self.locationName = locationName
+            self.max_bookings = max_bookings
+            self.bookings = []
 
     @staticmethod
     def db_connection():
@@ -163,6 +187,23 @@ class Appointment:
     def get_all():
         appoinments = Appointment.db_connection()
         return list(appoinments.find({}))
+    
+    @staticmethod
+    def get_by_id(slot_id):
+        appointments = Appointment.db_connection()
+        return appointments.find_one({'_id': slot_id})
+    
+    def update_appointment_slot(self, slot_id):
+        appointments = Appointment.db_connection()
+        
+        update_data = {k: v for k, v in self.__dict__.items() if k != '_id'}
+        appointments.update_one({'_id': ObjectId(slot_id)}, {'$set': update_data})
+    
+    @staticmethod
+    def delete_appointment_slot(slot_id):
+        appointment = Appointment.db_connection()
+        appointment.delete_one({'_id': slot_id})
+
 
     @staticmethod
     def booking_appointment(appointment_id, patient_id):
