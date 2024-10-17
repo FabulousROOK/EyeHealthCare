@@ -1,5 +1,5 @@
 from flask import Flask, render_template, url_for, redirect, request, session, flash, make_response, jsonify
-from models import Patient, Doctor, Admin, Appointment, MLmodels
+from models import Patient, Doctor, Admin, Appointment, MLmodels, DatabaseInitializer, get_mongo
 from datetime import datetime
 from werkzeug.utils import secure_filename
 import os
@@ -8,8 +8,37 @@ import math
 from bson.objectid import ObjectId
 
 
-app = Flask(__name__)
+
+def create_app():
+    app = Flask(__name__)
+
+    # Setup MongoDB configuration
+    app.config["MONGO_URI"] = "mongodb://localhost:27017/eye_health_care"
+    mongo = get_mongo(app)
+
+
+    # Store mongo instance in config for reuse
+    app.config['mongo'] = mongo
+
+    # Initialize database collections
+    with app.app_context():
+        initialize_database(app)
+
+    return app
+
+
+def initialize_database(app):
+
+    # Retrieve mongo instance from config and initialize collections
+    mongo = app.config['mongo']
+    db_initializer = DatabaseInitializer(mongo=mongo)
+    db_initializer.initialize_collections()
+
+
+app = create_app()
 app.secret_key = 'qwe123'
+
+
 
 @app.after_request
 def prevent_caching(response):

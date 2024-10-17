@@ -2,6 +2,27 @@ import hashlib
 from pymongo import MongoClient
 from bson.objectid import ObjectId
 
+class DatabaseInitializer:
+    def __init__(self, mongo):
+        self.mongo = mongo
+
+    
+    def initialize_collections(self):
+        db = self.mongo  # Using the database instance directly
+
+        # Create collections if they do not exist
+        collections = ['doctor', 'patient', 'admin', 'appointment', 'mlmodel']
+        for collection in collections:
+            if collection not in db.list_collection_names():
+                db.create_collection(collection)
+                print(f"Created '{collection}' collection")
+
+
+def get_mongo(app):
+    """Initialize PyMongo with the Flask app."""
+    client = MongoClient(app.config["MONGO_URI"])
+    return client[app.config["MONGO_URI"].split("/")[-1]]  # This gets the database name from the URI
+
 
 
 class Patient:
@@ -42,7 +63,14 @@ class Patient:
 
     def save(self):
         patients = self.db_connection()
-        patients.insert_one(self.__dict__)
+        patient_data = {
+            "fullName": self.fullName,
+            "email": self.email,
+            "password": self.password,
+            "profilepicturepath": self.profilepicturepath,
+            "status": self.status
+        }
+        patients.insert_one(patient_data)
 
     @staticmethod
     def get_all():
@@ -114,7 +142,18 @@ class Doctor:
 
     def save_doctor(self):
         doctors = self.db_connection()
-        doctors.insert_one(self.__dict__)
+        doctor_data = {
+            "fullName": self.fullName,
+            "email": self.email,
+            "specialization": self.specialization,
+            "licensenumber": self.licensenumber,
+            "experience": self.experience,
+            "clinicaddress": self.clinicaddress,
+            "password": self.password,
+            "profilepicturepath": self.profilepicturepath,
+            "status": self.status
+        }
+        doctors.insert_one(doctor_data)
 
     @staticmethod
     def get_all():
@@ -372,7 +411,7 @@ class MLmodels:
     def db_connection():
         client = MongoClient('mongodb://localhost:27017/')
         db = client['eye_health_care']
-        return db['mlmodels']
+        return db['mlmodel']
     
     def save(self):
         ml_models = self.db_connection()
