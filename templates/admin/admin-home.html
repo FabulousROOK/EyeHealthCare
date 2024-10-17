@@ -1,27 +1,274 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Bootstrap demo</title>
-    <link
-      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
-      rel="stylesheet"
-      integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH"
-      crossorigin="anonymous"
-    />
-  </head>
 
-  <body>
-    <div class="container-fluid">
-      <div class="row">
-        {% include 'layouts/admin-nav.html' %}
-      </div>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>EyeCare Admin</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet"
+    integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous" />
+  <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.1/jquery.min.js"></script>
+  <style>
+    .file-drop-area {
+      border: 2px dashed #007bff;
+      border-radius: 6px;
+      padding: 30px;
+      text-align: center;
+      color: #007bff;
+      cursor: pointer;
+      transition: background-color 0.2s ease;
+    }
+
+    .file-drop-area.dragover {
+      background-color: rgba(0, 123, 255, 0.1);
+    }
+  </style>
+</head>
+
+<body>
+  <div class="container-fluid">
+    <div class="row">
+      {% include 'layouts/admin-nav.html' %}
+
+      <main class="col-md-9 ms-sm-auto col-lg-10 px-md-4">
+        <h1>Main Board</h1>
+        <hr>
+
+        <div class="row" id="mainCards"></div>
+
+        <hr>
+
+        <div class="row">
+          <h5>Machine Learning Models</h5>
+          <div class="col-sm-6 mb-3 mb-sm-0">
+
+            <div class="card">
+              <div class="card-body">
+                <h6 class="card-title">File Drop Area</h6>
+                <p class="card-text">Drag and drop a file below or click to select a file.</p>
+
+                <form id="modelForm">
+                  <input type="text" class="form-control mb-3" id="name" name="name" value="" placeholder="Model Name"
+                    required>
+                  <!-- File drop area -->
+                  <div class="file-drop-area" id="file-drop-area">
+                    <svg width="50" height="50" fill="#007bff">
+                      <use xlink:href="#bi-file-earmark-easel" />
+                    </svg>
+
+                    <input type="file" id="model_file_input" name="model_file_input" hidden />
+
+
+                  </div>
+                </form>
+                <!-- File name display -->
+                <p id="file-name" class="mt-3 text-muted"></p>
+
+                <!-- Upload button -->
+                <button type="button" class="btn btn-primary mt-3" id="upload-btn" onclick="modelUpload()">Upload
+                  File</button>
+              </div>
+            </div>
+
+          </div>
+          <div class="col-sm-6">
+            <div class="card">
+              <div class="card-body">
+                <h6 class="card-title">Available Models</h6>
+                <p class="card-text">Select a ML Model to Run</p>
+
+                <div id="modelList"></div>
+
+              </div>
+            </div>
+          </div>
+        </div>
+
+
+        
+
+      </main>
+
     </div>
-    <script
-      src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"
-      integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz"
-      crossorigin="anonymous"
-    ></script>
-  </body>
+
+
+  </div>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"
+    integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz"
+    crossorigin="anonymous"></script>
+
+
+  <script>
+    $(document).ready(function () {
+      const fileDropArea = $("#file-drop-area");
+      const fileInput = $("#model_file_input");
+      const fileNameDisplay = $("#file-name");
+      let isClicked = false; // Flag to prevent multiple clicks
+
+      // Handle dragover event
+      fileDropArea.on("dragover", function (e) {
+        e.preventDefault();
+        $(this).addClass("dragover");
+      });
+
+      // Handle dragleave event
+      fileDropArea.on("dragleave", function () {
+        $(this).removeClass("dragover");
+      });
+
+      // Handle drop event
+      fileDropArea.on("drop", function (e) {
+        e.preventDefault();
+        $(this).removeClass("dragover");
+
+        const files = e.originalEvent.dataTransfer.files;
+        if (files.length > 0) {
+          fileInput.prop("files", files);
+          displayFileName(files[0]);
+        }
+      });
+
+      // Handle click on drop area to trigger file input click
+      fileDropArea.on("click", function (e) {
+        if (!isClicked) { // Check if already clicked
+          e.preventDefault();
+          isClicked = true; // Set the flag
+          fileInput.trigger('click');
+          isClicked = false;
+        }
+      });
+
+      // Handle file input change event
+      fileInput.on("change", function () {
+        const files = $(this)[0].files;
+        if (files.length > 0) {
+          displayFileName(files[0]);
+        }
+      });
+
+      // Function to display the file name
+      function displayFileName(file) {
+        fileNameDisplay.text(`Selected file: ${file.name}`);
+      }
+    });
+
+
+    // Function to load paginated models
+    function loadmodallist(page = 1) {
+      $.ajax({
+        url: '/admin-view-models',
+        type: 'GET',
+        data: { page: page },
+        success: function (data) {
+          // Load the returned HTML into the container
+          $('#modelList').html(data);
+        },
+        error: function () {
+          console.error("Failed to load appointments.");
+        }
+      });
+    }
+
+    // Function to load paginated appointments
+    function loadmaincards() {
+      $.ajax({
+        url: '/admin-home-main-cards',
+        type: 'GET',
+        success: function (data) {
+          // Load the returned HTML into the container
+          $('#mainCards').html(data);
+        },
+        error: function () {
+          console.error("Failed to load appointments.");
+        }
+      });
+    }
+
+    // Initial load
+    $(document).ready(function () {
+      loadmodallist(1);  // Load the first page of appointments by default
+      loadmaincards()
+    });
+
+
+    // Pagination handler
+    $(document).on('click', '.pagination a', function (e) {
+      e.preventDefault();
+      var page = $(this).data('page');  // Get the page number from the data-page attribute
+      loadmodallist(page);  // Load appointments for the clicked page
+    });
+
+    function modelUpload() {
+      let form = $('#modelForm')[0];  // Get the form element
+      let formData = new FormData(form);  // Create FormData object to handle file uploads
+      $.ajax({
+        type: 'POST',
+        url: '/admin-create-models', // Your server-side script URL
+        data: formData,
+        contentType: false,  // Important for file uploads
+        processData: false,  // Important for file uploads
+        success: function (response) {
+
+
+          if (response) {
+
+            $('#file-name').text(`Selected file:`);
+            loadmodallist(1);
+            loadmaincards()
+            console.log(response);
+
+          }
+
+
+        },
+        error: function (error) {
+          console.error('Error:', error); // Handle errors
+        }
+      });
+    }
+
+
+
+
+    var activemodelID;
+
+    function modelControl(ml_model_id, ml_model_name) {
+      $('#modelid').html(ml_model_id);
+      $('#modelname').html(ml_model_name);
+      activemodelID = ml_model_id;
+    }
+
+    function submitmodelForm() {
+      let formData = $('#modelform').serializeArray();
+
+      $.ajax({
+        type: 'POST',
+        url: '/admin-ml-model-status-update/' + activemodelID, // Your server-side script URL
+        data: formData,
+        success: function (response) {
+
+
+          if (response) {
+
+            console.log(response);
+            $('#modelControl').modal('hide');
+            loadmodallist(1);
+            loadmaincards()
+
+          }
+
+
+        },
+        error: function (error) {
+          console.error('Error:', error); // Handle errors
+        }
+      });
+    }
+
+
+  </script>
+
+
+</body>
+
 </html>

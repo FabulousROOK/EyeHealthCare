@@ -9,7 +9,7 @@
     }
 </style>
 
-{% for doctor_profile in doctor_profiles %}
+{% for patient_profile in patient_profiles %}
 
 
 <div class="card shadow-sm mb-4 rounded-4">
@@ -17,33 +17,25 @@
         <!-- Date Section -->
         <div
             class="col-3 col-sm-2 text-center d-flex align-items-center justify-content-center flex-column p-3 rounded-start">
-            <img src="{{ doctor_profile.profilepicturepath }}" alt="Doctor Avatar" class="profile-avatar mb-3">
+            <img src="{{ patient_profile.profilepicturepath }}" alt="Doctor Avatar" class="profile-avatar mb-3">
         </div>
 
         <!-- Event Details Section -->
         <div class="col-7 col-sm-8">
             <div class="card-body p-3">
                 <div class="d-flex justify-content-start align-items-center">
-                    <h5 class="card-title m-3">Dr. {{ doctor_profile.fullName }}</h5>
-                    {% if doctor_profile.status == 'Approved' %}
+
+                    <h5 class="card-title m-3">{{ patient_profile.fullName }}</h5>
+                    {% if patient_profile.status == 'Active' %}
                     <span class="badge rounded-pill text-bg-success"
-                        style="font-size: 12px;">{{doctor_profile.status}}</span>
-                    {% elif doctor_profile.status == 'Hold' %}
-                    <span class="badge rounded-pill text-bg-info"
-                        style="font-size: 12px;">{{doctor_profile.status}}</span>
-                    {% elif doctor_profile.status == 'Declined' %}
+                        style="font-size: 12px;">{{patient_profile.status}}</span>
+                    {% elif patient_profile.status == 'Deactive' %}
                     <span class="badge rounded-pill text-bg-danger"
-                        style="font-size: 12px;">{{doctor_profile.status}}</span>
-                    {% elif doctor_profile.status == 'Pending' %}
-                    <span class="badge rounded-pill text-bg-secondary"
-                        style="font-size: 12px;">{{doctor_profile.status}}</span>
+                        style="font-size: 12px;">{{patient_profile.status}}</span>
                     {% endif %}
 
                 </div>
-                <p class="card-text text-muted mb-2"><i class="bi bi-clock"></i> Specialization: {{
-                    doctor_profile.specialization }}</p>
-                <p class="card-text text-muted mb-2"><i class="bi bi-clock"></i> Experience: {{
-                    doctor_profile.experience }} Years</p>
+               
 
             </div>
         </div>
@@ -53,7 +45,7 @@
             <div class="d-flex flex-column align-items-center gap-2">
 
                 <a href="" class="btn btn-success action-link" data-bs-toggle="modal"
-                    data-bs-target="#editDoctorProfile" onclick="editTrigger('{{ doctor_profile._id }}')">
+                    data-bs-target="#editDoctorProfile" onclick="editTrigger('{{ patient_profile._id }}')">
                     <svg class="bi">
                         <use xlink:href="#bi-pencil" />
                     </svg>
@@ -61,7 +53,7 @@
                 </a>
 
                 <a href="" class="btn btn-danger action-link" data-bs-toggle="modal" data-bs-target="#deleteProfile"
-                    onclick="deleteTrigger('{{ doctor_profile._id }}')">
+                    onclick="deleteTrigger('{{ patient_profile._id }}')">
                     <svg class="bi">
                         <use xlink:href="#bi-trash3" />
                     </svg>
@@ -86,8 +78,8 @@
             <div class="modal-body">
                 <form id="DoctorProfileForm">
                     <div class="mb-3">
-                        <input type="text" class="form-control" id="doctorId" name="doctorId" value=""
-                            placeholder="Doctor ID" readonly>
+                        <input type="text" class="form-control" id="patientID" name="patientID" value=""
+                            placeholder="Patient ID" readonly>
                     </div>
                     <div class="mb-3">
                         <input type="text" class="form-control" id="fullname" name="fullname" value=""
@@ -97,30 +89,13 @@
                         <input type="email" class="form-control" id="email" name="email" value=""
                             placeholder="Email Address" readonly>
                     </div>
-                    <div class="mb-3">
-                        <input type="text" class="form-control" id="specialization" name="specialization" value=""
-                            placeholder="Specialization" readonly>
-                    </div>
-                    <div class="mb-3">
-                        <input type="text" class="form-control" id="licensenumber" name="licensenumber" value=""
-                            placeholder="Medical License Number" readonly>
-                    </div>
-                    <div class="mb-3">
-                        <input type="text" class="form-control" id="experience" name="experience" value=""
-                            placeholder="Years of Experience" readonly>
-                    </div>
-                    <div class="mb-3">
-                        <input type="text" class="form-control" id="clinicaddress" name="clinicaddress" value=""
-                            placeholder="Clinic Address" readonly>
-                    </div>
                     <hr class="m-2">
                     <div class="mb-3">
                         <label for="status" class="form-label">Status</label>
                         <select class="form-select" aria-label="Default select example" id="status" name="status">
                             <option selected>Open this select menu</option>
-                            <option value="Approved">Approve</option>
-                            <option value="Hold">Hold</option>
-                            <option value="Declined">Decline</option>
+                            <option value="Active">Active</option>
+                            <option value="Deactive">Deactive</option>
                         </select>
                     </div>
                 </form>
@@ -196,20 +171,16 @@
 
 
 <script>
-    function editTrigger(doctor_id) {
+    function editTrigger(patient_id) {
 
         $.ajax({
             type: 'GET',
-            url: '/view-doctor-profile/' + doctor_id, // Send the slot_id in the URL
+            url: '/admin-view-patient-profile/' + patient_id, // Send the slot_id in the URL
             success: function (response) {
                 // Populate the modal fields with the fetched data
-                $('#doctorId').val(response._id);
+                $('#patientID').val(response._id);
                 $('#fullname').val(response.fullName);
                 $('#email').val(response.email);
-                $('#specialization').val(response.specialization);
-                $('#licensenumber').val(response.licensenumber);
-                $('#experience').val(response.experience);
-                $('#clinicaddress').val(response.clinicaddress);
             },
             error: function (error) {
                 console.error('Error:', error); // Handle errors
@@ -223,21 +194,17 @@
     function statusAction() {
         let status = $('#status').val();
 
-        if (status == 'Approved' || status == 'Hold' || status == 'Declined') {
+        if (status == 'Active' || status == 'Deactive') {
             $('#DoctorProfileForm').hide();
             $('#mainButtons').hide();
             $('#finalStatusUpdate').show();
 
-            if (status == 'Approved') {
-                $('#confirmStatement').html('Please confirm to "Approve" the profile')
+            if (status == 'Active') {
+                $('#confirmStatement').html('Please confirm to "Active" the profile')
             }
 
-            if (status == 'Hold') {
-                $('#confirmStatement').html('Please confirm to "Hold" the profile')
-            }
-
-            if (status == 'Declined') {
-                $('#confirmStatement').html('Please confirm to "Decline" the profile')
+            if (status == 'Deactive') {
+                $('#confirmStatement').html('Please confirm to "Deactive" the profile')
             }
 
 
@@ -249,10 +216,10 @@
 
     function updateProfileStatus() {
         let formData = $('#DoctorProfileForm').serializeArray();
-        let doctor_id = formData.find(item => item.name === 'doctorId').value;
+        let patient_id = formData.find(item => item.name === 'patientID').value;
         $.ajax({
             type: 'POST',
-            url: '/admin-doctor-profile-status-update/' + doctor_id, // Your server-side script URL
+            url: '/admin-patient-profile-status-update/' + patient_id, // Your server-side script URL
             data: formData,
             success: function (response) {
 
@@ -280,22 +247,22 @@
     }
 
 
-    var doctorId;
+    var patientID;
 
-    function deleteTrigger(doctor_id) {
-        doctorId = doctor_id;
+    function deleteTrigger(patient_id) {
+        patientID = patient_id;
     }
 
 
     function deleteProfile() {
-        let profileToDelete = doctorId;
+        let profileToDelete = patientID;
 
         if (profileToDelete) {
 
             $.ajax({
                 type: 'POST',
-                url: '/admin-delete-doctor-profile', // Your server-side delete URL
-                data: JSON.stringify({ doctor_id: profileToDelete }),
+                url: '/admin-delete-patient-profile', // Your server-side delete URL
+                data: JSON.stringify({ patient_id: profileToDelete }),
                 contentType: 'application/json',
                 success: function (response) {
                     if (response.success) {

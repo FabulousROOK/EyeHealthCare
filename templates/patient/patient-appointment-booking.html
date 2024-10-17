@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Eye Care Patient</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.1/jquery.min.js"></script>
+
+    <style>
+        body {
+            background-color: #f8f9fa;
+        }
+
+        .profile-avatar {
+            width: 150px;
+            height: 150px;
+            object-fit: cover;
+            border-radius: 50%;
+            border: 5px solid #fff;
+        }
+
+        .doctor-details {
+            background-color: #ffffff;
+            padding: 20px;
+            box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.1);
+            border-radius: 10px;
+        }
+
+        .appointment-slots {
+            margin-top: 20px;
+        }
+
+        .slot-card {
+            background-color: #fff;
+            border-radius: 10px;
+            box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.1);
+            padding: 20px;
+            text-align: center;
+        }
+
+        .btn-slot {
+            background-color: #28a745;
+            color: white;
+        }
+
+        .btn-slot:hover {
+            background-color: #218838;
+        }
+    </style>
+</head>
+
+<body>
+
+    {% include 'layouts/patient-nav.html' %}
+
+    <div class="container mt-5">
+        <!-- Doctor's Details Section -->
+        <div class="doctor-details">
+            <div class="row align-items-center">
+                <div class="col-md-4 text-center">
+                    <img src="{{doctor_profile.profilepicturepath}}" alt="Doctor Avatar" class="profile-avatar mb-3">
+                </div>
+                <div class="col-md-8">
+                    <h3 class="mb-0">Dr {{doctor_profile.fullName}}</h3>
+                    <p class="text-muted">Specialist: {{doctor_profile.specialization}}</p>
+                    <p><i class="bi bi-geo-alt"></i> Clinic Address: {{doctor_profile.clinicaddress}}</p>
+                    <p><i class="bi bi-envelope"></i> Email: {{doctor_profile.email}}</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Appointment Slots Section -->
+        <div class="appointment-slots mt-4">
+            <h4 class="text-center">Available Appointment Slots</h4>
+            <div class="row g-3 mt-3">
+                <!-- Appointment Slot 1 -->
+                {% for appointment_active_slot in appointment_active_slots %}
+                <div class="col-md-4">
+                    <div class="slot-card">
+                        <h3>{{appointment_active_slot.name}}</h3>
+                        <h6>Date: {{ appointment_active_slot.date.strftime('%d') }} {{
+                            appointment_active_slot.date.strftime('%b %Y') }}</h6>
+                        <p>Time: {{appointment_active_slot.time}}</p>
+                        <button class="btn btn-slot" onclick="addBooking('{{appointment_active_slot._id}}')">Book
+                            Slot</button>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Error alert -->
+    <div id="errorMessage" class="alert alert-danger" style="display: none;"></div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+
+
+    <script>
+        function addBooking(slot_id) {
+
+            $.ajax({
+                type: 'POST',
+                url: '/patient-book-appointments', // Your server-side delete URL
+                data: JSON.stringify({ slot_id: slot_id }),
+                contentType: 'application/json',
+                success: function (response) {
+                    // Handle successful response
+                    console.log(data.message);
+                    // You can update the UI or show a success message here
+                    alert(`Success: ${data.message}. Booking Number: ${data.booking_number}`);
+                },
+                error: function (xhr, status, error) {
+                    // Handle error response
+                    const errorMessage = xhr.responseJSON ? xhr.responseJSON.message : "An unexpected error occurred.";
+                    console.error(errorMessage);
+                    alert(`Error: ${errorMessage}`);  // Display the error message to the user
+                }
+            });
+
+        }
+
+    </script>
+</body>
+
+</html>

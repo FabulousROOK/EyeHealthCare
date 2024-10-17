@@ -8,7 +8,7 @@
         integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.1/jquery.min.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
-    <title>Patient Home</title>
+    <title>Eye Care Patient</title>
 
     <style>
         body {
@@ -44,7 +44,7 @@
             background-color: #8accffe7;
             border-radius: 30px;
             box-shadow: 0 4px 8px 0 rgba(0, 0, 0, 0.2), 0 6px 20px 0 rgba(0, 0, 0, 0.19);
-            
+
         }
 
         .card {
@@ -85,56 +85,153 @@
         <div class="appointment-list mb-4">
             <ul class="list-group">
                 <!-- Example of an active appointment -->
+                {% if bookings %}
+                {% for booking in bookings %}
                 <li class="list-group-item d-flex justify-content-between align-items-center">
                     <div>
-                        <strong>Dr. John Doe</strong> - Appointment Date: <span class="text-muted">2024-10-15</span>
+                        <strong>Dr. {{booking.doctor}}</strong>
                     </div>
-                    <a href="#" class="btn btn-danger btn-sm">Cancel</a>
-                </li>
-                <li class="list-group-item d-flex justify-content-between align-items-center">
                     <div>
-                        <strong>Dr. Jane Smith</strong> - Appointment Date: <span class="text-muted">2024-10-20</span>
+                        <strong>{{booking.appointment_name}}</strong> - Appointment Date: <span
+                            class="text-muted">{{booking.appointment_date}} @ {{booking.appointment_time}}</span>
                     </div>
-                    <a href="#" class="btn btn-danger btn-sm">Cancel</a>
+                    <a href="#" class="btn btn-danger btn-sm" data-bs-toggle="modal"
+                        data-bs-target="#cancelAppointmentModal"
+                        onclick="triggerCancelAppointment('{{booking.appointment_id}}', '{{booking.booking_number}}')">Cancel</a>
                 </li>
+                {% endfor %}
+                {% else %}
+                <li class="list-group-item d-flex justify-content-between align-items-center">
+                    <strong>No Avtive Appointments</strong>
+                </li>
+                {% endif %}
+
+
+                <!-- Cancel Appointment Modal -->
+                <div class="modal fade" id="cancelAppointmentModal" tabindex="-1" aria-labelledby="exampleModalLabel"
+                    aria-hidden="true">
+                    <div class="modal-dialog">
+                        <div class="modal-content">
+                            <div class="modal-header">
+                                <h1 class="modal-title fs-5" id="exampleModalLabel">Modal title</h1>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal"
+                                    aria-label="Close"></button>
+                            </div>
+                            <div class="modal-body">
+                                <p>Are you sure you want to cancel the appointment?</p>
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                                <button type="button" class="btn btn-danger"
+                                    onclick="submitCancellation()">Confirm</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
             </ul>
         </div>
 
+
+
+
         <!-- View Other Doctors Section -->
-        <h4>Other Doctors</h4>
-        <div class="row">
-            <div class="col-md-4">
-                <div class="card mb-4">
-                    <div class="card-body">
-                        <h5 class="card-title">Dr. Emily White</h5>
-                        <p class="card-text">Specialization: Ophthalmologist</p>
-                        <a href="#" class="btn btn-primary">View Profile</a>
-                    </div>
-                </div>
-            </div>
-            <div class="col-md-4">
-                <div class="card mb-4">
-                    <div class="card-body">
-                        <h5 class="card-title">Dr. Mark Black</h5>
-                        <p class="card-text">Specialization: Optometrist</p>
-                        <a href="#" class="btn btn-primary">View Profile</a>
-                    </div>
-                </div>
-            </div>
-            <div class="col-md-4">
-                <div class="card mb-4">
-                    <div class="card-body">
-                        <h5 class="card-title">Dr. Sarah Green</h5>
-                        <p class="card-text">Specialization: Eye Surgeon</p>
-                        <a href="#" class="btn btn-primary">View Profile</a>
-                    </div>
-                </div>
-            </div>
+        <h4>Available Doctors</h4>
+        <div class="row" id="doctor_cards">
+
         </div>
     </div>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"
         integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz"
         crossorigin="anonymous"></script>
+
+    <script>
+        function getbookings() {
+            alert('s')
+            $.ajax({
+                url: '/patient-view-appoinments',
+                type: 'GET',
+                success: function (data) {
+                    // Load the returned HTML into the container
+                    $('#doctor_cards').html(data);
+                },
+                error: function () {
+                    console.error("Failed to load appointments.");
+                }
+            });
+        }
+        // Function to load paginated doctor cards
+        function loaddoctorcards(page = 1) {
+            $.ajax({
+                url: '/patient-home-doctor-cards',
+                type: 'GET',
+                data: { page: page },
+                success: function (data) {
+                    // Load the returned HTML into the container
+                    $('#doctor_cards').html(data);
+                },
+                error: function () {
+                    console.error("Failed to load appointments.");
+                }
+            });
+        }
+
+        var tempAppointment_id;
+        var tempbooking_number;
+        function triggerCancelAppointment(appointment_id, booking_number) {
+            tempAppointment_id = appointment_id
+            tempbooking_number = booking_number
+        }
+
+        function submitCancellation() {
+            let appointment_id = tempAppointment_id;
+            let booking_number = tempbooking_number;
+            $.ajax({
+                url: '/patient-cancel-appointment',
+                type: 'POST',
+                data: {
+                    appointment_id: appointment_id,
+                    booking_number: booking_number
+                },
+                success: function (data) {
+                    // Load the returned HTML into the container
+                    // $('#doctor_cards').html(data);
+
+                    tempAppointment_id = null;
+                    tempbooking_number = null;
+
+                    location.reload();
+                },
+                error: function () {
+                    console.error("Failed to load appointments.");
+                }
+            });
+        }
+
+        // Function to load paginated appointments
+        // function loadmaincards() {
+        //     $.ajax({
+        //         url: '/admin-home-main-cards',
+        //         type: 'GET',
+        //         success: function (data) {
+        //             // Load the returned HTML into the container
+        //             $('#mainCards').html(data);
+        //         },
+        //         error: function () {
+        //             console.error("Failed to load appointments.");
+        //         }
+        //     });
+        // }
+
+        // Initial load
+        $(document).ready(function () {
+            loaddoctorcards(1);  // Load the first page of appointments by default
+            // loadmaincards()
+        });
+
+
+
+    </script>
 </body>
 
 </html>

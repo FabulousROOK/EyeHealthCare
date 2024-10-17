@@ -20,11 +20,14 @@
                     {% elif appointment.status == 'Ended' %}
                         <span class="badge rounded-pill text-bg-danger" style="font-size: 12px;">{{appointment.status}}</span>
                     {% endif %}
+
+                    
                     
                 </div>
                 <p class="card-text text-muted mb-2"><i class="bi bi-clock"></i> From: {{ appointment.time }}</p>
                 <p class="card-text text-muted"><i class="bi bi-geo-alt"></i>At: {{ appointment.locationName }}
                 </p>
+                <p class="card-text text-muted">Bookings: {{appointment.active_bookings}}</p>
             </div>
         </div>
 

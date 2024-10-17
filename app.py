@@ -1,5 +1,5 @@
 from flask import Flask, render_template, url_for, redirect, request, session, flash, make_response, jsonify
-from models import Patient, Doctor, Admin, Appointment
+from models import Patient, Doctor, Admin, Appointment, MLmodels
 from datetime import datetime
 from werkzeug.utils import secure_filename
 import os
@@ -45,6 +45,7 @@ def doctor_login():
         if doctor:
             session['doctor_id'] = str(doctor['_id'])  # Store user ID in session
             session['doctor_email'] = doctor['email']
+            session['doctor_status'] = doctor['status']
             return redirect(url_for('doctor_home'))
         else:
             flash('Invalid email or password', 'danger')
@@ -82,6 +83,9 @@ def doctor_home():
             appointment['date'] = datetime.fromisoformat(appointment['date'])
             appointment['status'] = 'Ended' if appointment['date'] < datetime.now() else 'Upcoming'
 
+            appointment['total_bookings'] = len(appointment['bookings'])
+            appointment['active_bookings'] = sum(1 for booking in appointment['bookings'] if booking['status'] == 'Active')
+
         page = request.args.get('page', 1, type=int)
         per_page = 5
         total_items = len(appointments)
@@ -103,6 +107,9 @@ def view_appointment_slots():
         for appointment in appointments:
             appointment['date'] = datetime.fromisoformat(appointment['date'])
             appointment['status'] = 'Ended' if appointment['date'] < datetime.now() else 'Upcoming'
+
+            appointment['total_bookings'] = len(appointment['bookings'])
+            appointment['active_bookings'] = sum(1 for booking in appointment['bookings'] if booking['status'] == 'Active')
 
         page = request.args.get('page', 1, type=int)
         per_page = 5
@@ -131,19 +138,22 @@ def view_edit_appointment_slots(slot_id):
 
 @app.route('/create-appointment-slot', methods = ['GET', 'POST'])
 def create_appointment_slot():
-    if request.method == 'POST':
-        name = request.form['appointmentSlotName']
-        type = request.form['appointmentType']
-        date = request.form['date']
-        time = request.form['time']
-        locationName = request.form['location']
-        max_bookings = int(request.form['maxBookings'])
-        doctor_id = session['doctor_id']
+    if 'doctor_id' in session and 'doctor_status' in session:
+        if session['doctor_status'] == 'Approved':
+            if request.method == 'POST':
+                name = request.form['appointmentSlotName']
+                type = request.form['appointmentType']
+                date = request.form['date']
+                time = request.form['time']
+                locationName = request.form['location']
+                max_bookings = int(request.form['maxBookings'])
+                doctor_id = session['doctor_id']
 
-        appointmentSlot = Appointment(doctor_id, name, type, date, time, locationName, max_bookings)
-        appointmentSlot.save_appointments()
+                appointmentSlot = Appointment(doctor_id, name, type, date, time, locationName, max_bookings)
+                appointmentSlot.save_appointments()
 
-        return jsonify({'success': 'Appointment slot added successfully'})
+                return jsonify({'success': 'Appointment slot added successfully'})
+        return jsonify({'error': 'Cannot Create as the Profile is not yet approved'})
     return jsonify({'error': 'Appointment slot addition failed'})
 
 
@@ -189,6 +199,13 @@ def delete_appointment_slot():
         Appointment.delete_appointment_slot(ObjectId(slot_id))
         return jsonify({'success': 'Appointment slot deleted'})
     return jsonify({'error': 'No appointment slot ID provided'})
+
+
+@app.route('/doctor-ml-model')
+def doctor_ml_model():
+    if 'doctor_id' in session:
+        return render_template('doctor/doctor-ml-model.html')
+    return redirect(url_for('index'))
 
 
 @app.route('/doctor-profile')
@@ -267,7 +284,8 @@ def update_doctor_profile():
 def patient_home():
     if 'patient_id' in session:
         patient_id = session['patient_id']
-        return render_template('patient/patient-home.html', patient_id = patient_id)
+        bookings = Appointment.get_bookings(ObjectId(patient_id))
+        return render_template('patient/patient-home.html', patient_id = patient_id, bookings = bookings)
     return redirect(url_for('index'))
 
 
@@ -331,7 +349,99 @@ def update_patient_profile():
             return redirect(url_for('index'))
     
 
+@app.route('/patient-home-doctor-cards')
+def patient_home_doctor_cards():
+    doctor_profiles = Doctor.get_all()
+    doctor_active_profiles = [profile for profile in doctor_profiles if profile.get('status')=='Approved']
 
+    page = request.args.get('page', 1, type=int)
+    per_page = 4
+    total_items = len(doctor_active_profiles)
+    total_pages = math.ceil(total_items / per_page)
+
+    start = (page - 1)*per_page
+    end = start + per_page
+    paginated_doctor_active_profiles = doctor_active_profiles[start:end]
+        
+    return render_template('components/patient/patient-home-doctor-cards.html', doctor_active_profiles=paginated_doctor_active_profiles, page=page, total_pages=total_pages)
+
+
+@app.route('/patient-view-doctor-profile', methods = ['GET', 'POST'])
+def patient_view_doctor_profile():
+    doctor_id = request.form['doctor_id']
+    print('doc ID :  ', doctor_id)
+    doctor_profile = Doctor.get_by_id(ObjectId(doctor_id))
+    appointment_slots_all = Appointment.get_all()
+
+    current_date = datetime.now().date()
+    appointment_active_slots = [slot for slot in appointment_slots_all if datetime.strptime(slot.get('date'), '%Y-%m-%d').date() >= current_date and slot.get('doctor_id') == doctor_id]
+
+    for appointment_active_slot in appointment_active_slots:
+            appointment_active_slot['date'] = datetime.fromisoformat(appointment_active_slot['date'])
+    
+    return render_template('patient/patient-appointment-booking.html', appointment_active_slots=appointment_active_slots, doctor_profile=doctor_profile)
+
+
+@app.route('/patient-book-appointments', methods=['GET', 'POST'])
+def patient_book_appointments():
+    if 'patient_id' in session:
+        data = request.get_json()
+        slot_id = data.get('slot_id')
+        patient_id = session['patient_id']
+        patient_profile = Patient.get_by_id(ObjectId(patient_id))
+        patient_name = patient_profile['fullName']
+        date_time = datetime.now()
+
+
+        result = Appointment.booking_appointment(ObjectId(slot_id), ObjectId(patient_id), patient_name, date_time)
+
+        # Ensure result is unpacked correctly
+        if isinstance(result, tuple) and len(result) == 2:  # Check if result is a tuple with 2 elements
+            booking_number, message = result
+            
+            if booking_number is not None:  # Booking was successful
+                return jsonify({"message": message, "booking_number": booking_number}), 200
+            else:  # Booking failed
+                if message == "error_appointment_not_found":
+                    return jsonify({"message": "Appointment slot not found."}), 404
+                elif message == "error_already_booked":
+                    return jsonify({"message": "You have already booked this appointment."}), 400
+                elif message == "error_slot_full":
+                    return jsonify({"message": "The slot is full."}), 400
+                else:
+                    return jsonify({"message": message}), 400  # Generic error message
+        else:
+            return jsonify({"message": "An unexpected error occurred."}), 500
+
+
+    else:
+        return redirect(url_for('index'))
+    
+
+# @app.route('/patient-view-appoinments')
+# def patient_view_appoinments():
+#     if 'patient_id' in session:
+#         patient_id = session['patient_id']
+#         bookings = Appointment.get_bookings(ObjectId(patient_id))
+
+#         print('bookings',bookings)
+
+@app.route('/patient-cancel-appointment', methods = ['POST'])
+def patient_cancel_appointment():
+    if 'patient_id' in session:
+        patient_id = session['patient_id']
+        appointment_id = request.form.get('appointment_id')
+        booking_number = int(request.form.get('booking_number'))
+
+        result = Appointment.cancel_bookings(ObjectId(patient_id), ObjectId(appointment_id), booking_number)
+
+        if result.modified_count > 0:
+            return jsonify({'success': "Appointment Cancelled"})
+        else:
+            return jsonify({'error': "Cancellation failed, booking not found"})
+
+    else:
+        return redirect(url_for('index'))
 
     
 
@@ -375,8 +485,124 @@ def admin_home():
         return render_template('admin/admin-home.html')
     return redirect(url_for('index'))
 
+@app.route('/admin-home-main-cards')
+def admin_home_main_cards():
+    if 'admin_id' in session:
+        doctor_profile_count = len(Doctor.get_all())
+        patient_profile_count = len(Patient.get_all())
+        ml_models_count = len(MLmodels.get_all())
+
+        return render_template('components/admin/admin-main-dashboard-cards.html', doctor_profile_count=doctor_profile_count, patient_profile_count=patient_profile_count, ml_models_count=ml_models_count )
+    return redirect(url_for('index'))
+
+
+UPLOAD_FOLDER_MODELS = 'static/models'
+ALLOWED_EXTENSIONS_MODELS = {'pkl', 'h5', 'onnx', 'joblib', 'json'}
+
+app.config['UPLOAD_FOLDER_MODELS'] = UPLOAD_FOLDER_MODELS
+
+def allowed_file_models(filename):
+    return '.'in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS_MODELS
+
+
+@app.route('/admin-create-models', methods = ['GET', 'POST'])
+def create_models():
+    if request.method == 'POST':
+        name = request.form['name']
+        
+        if 'model_file_input' in request.files:
+            file = request.files['model_file_input']
+            if file and allowed_file_models(file.filename):
+                filename = secure_filename(file.filename)
+                file_path = os.path.join(app.config['UPLOAD_FOLDER_MODELS'], filename)
+                file.save(file_path)
+                model_file_path = file_path
+                # print("file", model_file_path)
+            else: 
+                print("No Data")
+
+        model = MLmodels(name, model_file_path)
+        
+        model.save()
+
+        return jsonify({'success': 'ML Model added successfully'})
+    return jsonify({'error': 'ML Model addition failed'})
+
+
+@app.route('/admin-view-models')
+def admin_view_models():
+    if 'admin_id' in session:
+        ml_models = MLmodels.get_all()
+        
+
+        page = request.args.get('page', 1, type=int)
+        per_page = 4
+        total_items = len(ml_models)
+        total_pages = math.ceil(total_items / per_page)
+
+        start = (page - 1)*per_page
+        end = start + per_page
+        paginated_ml_models = ml_models[start:end]
+        
+        return render_template('components/admin/admin-view-models.html', ml_models=paginated_ml_models, page=page, total_pages=total_pages)
+    
+    return redirect(url_for('index'))
+
+
+@app.route('/admin-ml-model-status-update/<ml_model_id>', methods = ['GET', 'POST'])
+def admin_ml_model_status_update(ml_model_id):
+    if 'admin_id' in session:
+        if 'status' in request.form and request.form['status'] == 'Active' or request.form['status'] == 'Inactive' :
+            ml_model = MLmodels.get_by_id(ObjectId(ml_model_id))
+            all_ml_model = MLmodels.get_all()
+
+            active_ml_models = [model for model in all_ml_model if model.get('status') == 'Active']
+            status = request.form['status']
+
+            if not active_ml_models:
+
+                if ml_model:
+                    
+                    update_data = {
+                        'status': status
+                    }
+
+                    MLmodels.update(ObjectId(ml_model_id), update_data)
+
+                    return jsonify({'success': "Model Updated"})
+                
+                return jsonify({'error': "No Model Found"})
+            
+            elif ml_model and status == 'Inactive':
+                
+                update_data = {
+                    'status': status
+                }
+
+                MLmodels.update(ObjectId(ml_model_id), update_data)
+
+                return jsonify({'success': "Model Updated"})
+            
+            return jsonify({'warning': "A model is already Active"})
+        
+        return jsonify({'error': "Form Data Not Found"})
+    
+    return redirect(url_for('index'))
+
+
+
+
 @app.route('/admin-doctor-management')
 def admin_doctor_management():
+    if 'admin_id' in session:
+
+        return render_template('admin/admin-doctor-management.html')
+    
+    return redirect(url_for('index'))
+
+
+@app.route('/admin-get-all-doctors')
+def admin_get_all_doctor():
     if 'admin_id' in session:
 
         doctor_profiles = Doctor.get_all()
@@ -391,9 +617,10 @@ def admin_doctor_management():
         end = start + per_page
         paginated_doctor_profiles = doctor_profiles[start:end]
         
-        return render_template('admin/admin-doctor-management.html', doctor_profiles=paginated_doctor_profiles, page=page, total_pages=total_pages)
+        return render_template('components/admin/admin-view-doctors.html', doctor_profiles=paginated_doctor_profiles, page=page, total_pages=total_pages)
     
     return redirect(url_for('index'))
+
 
 @app.route('/view-doctor-profile/<doctor_id>', methods=['GET'])
 def view_doctor_profile(doctor_id):
@@ -405,17 +632,120 @@ def view_doctor_profile(doctor_id):
     return jsonify({'error': 'Doctor profile not found'})
 
 
+@app.route('/admin-doctor-profile-status-update/<doctor_id>', methods=['GET','POST'])
+def admin_doctor_profile_status_update(doctor_id):
+    if 'admin_id' in session:
+        doctor = Doctor.get_by_id(ObjectId(doctor_id))
+
+        if doctor:
+            if request.method == 'POST':
+
+                status = request.form['status']
+
+                update_data = {
+                    'status': status
+                }
+                        
+
+                # Update doctor details in the database
+                Doctor.update(ObjectId(doctor_id), update_data)
+
+                return jsonify({'success': "Profile Updated"})
+        else:
+            return redirect(url_for('index'))
+
+
+@app.route('/admin-delete-doctor-profile', methods = ['GET', 'POST'])
+def admin_delete_doctor_profile():
+    data = request.get_json()
+    doctor_id = data.get('doctor_id')
+
+    if doctor_id:
+        Doctor.delete_doctor_profile(ObjectId(doctor_id))
+        return jsonify({'success': 'Profile deleted'})
+    return jsonify({'error': 'No profile ID provided'})
+
+
 @app.route('/admin-patient-management')
 def admin_patient_management():
     if 'admin_id' in session:
         return render_template('admin/admin-patient-management.html')
     return redirect(url_for('index'))
 
+
+@app.route('/admin-get-all-patients')
+def admin_get_all_patients():
+    if 'admin_id' in session:
+
+        patient_profiles = Patient.get_all()
+        
+
+        page = request.args.get('page', 1, type=int)
+        per_page = 5
+        total_items = len(patient_profiles)
+        total_pages = math.ceil(total_items / per_page)
+
+        start = (page - 1)*per_page
+        end = start + per_page
+        paginated_patient_profiles = patient_profiles[start:end]
+        
+        return render_template('components/admin/admin-view-patient.html', patient_profiles=paginated_patient_profiles, page=page, total_pages=total_pages)
+    
+    return redirect(url_for('index'))
+
+
+@app.route('/admin-view-patient-profile/<patient_id>', methods=['GET'])
+def view_patient_profile(patient_id):
+    patient_profile = Patient.get_by_id(ObjectId(patient_id))
+
+    if patient_profile:
+        patient_profile['_id'] = str(patient_profile['_id'])
+        return jsonify(patient_profile)
+    return jsonify({'error': 'Patient profile not found'})
+
+
+
+@app.route('/admin-patient-profile-status-update/<patient_id>', methods=['GET','POST'])
+def admin_patient_profile_status_update(patient_id):
+    if 'admin_id' in session:
+        patient = Patient.get_by_id(ObjectId(patient_id))
+
+        if patient:
+            if request.method == 'POST':
+
+                status = request.form['status']
+
+                update_data = {
+                    'status': status
+                }
+                        
+
+                # Update doctor details in the database
+                Patient.update(ObjectId(patient_id), update_data)
+
+                return jsonify({'success': "Profile Updated"})
+        else:
+            return redirect(url_for('index'))
+
+
+@app.route('/admin-delete-patient-profile', methods = ['GET', 'POST'])
+def admin_delete_patient_profile():
+    data = request.get_json()
+    patient_id = data.get('patient_id')
+
+    if patient_id:
+        Patient.delete_patient_profile(ObjectId(patient_id))
+        return jsonify({'success': 'Profile deleted'})
+    return jsonify({'error': 'No profile ID provided'})
+
+
 @app.route('/admin-appointment-management')
 def admin_appointment_management():
     if 'admin_id' in session:
         return render_template('admin/admin-appointment-management.html')
     return redirect(url_for('index'))
+
+
 
 
 

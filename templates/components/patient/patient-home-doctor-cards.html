@@ -1,0 +1,17 @@
+{% for doctor_active_profile in doctor_active_profiles %}
+
+<div class="col-md-4">
+    <div class="card mb-4">
+        <div class="card-body">
+            <h5 class="card-title">Dr. {{doctor_active_profile.fullName}}</h5>
+            <p class="card-text">Specialization: {{doctor_active_profile.specialization}}</p>
+            <form action="{{ url_for('patient_view_doctor_profile') }}" method="post">
+                <input type="hidden" value="{{doctor_active_profile._id}}" name="doctor_id" id="doctor_id" hidden>
+                <button type="submit" class="btn btn-primary">View Profile</button>
+            </form>
+            
+        </div>
+    </div>
+</div>
+
+{% endfor %}

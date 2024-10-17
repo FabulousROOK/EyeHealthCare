@@ -5,11 +5,12 @@ from bson.objectid import ObjectId
 
 
 class Patient:
-    def __init__(self, fullName, email, password=None, profilepicturepath=None):
+    def __init__(self, fullName, email, password=None, profilepicturepath=None, status='Active'):
         self.fullName = fullName
         self.email = email
         self.password = password
         self.profilepicturepath = profilepicturepath
+        self.status = status
     
     @staticmethod
     def db_connection():
@@ -58,6 +59,11 @@ class Patient:
     def get_by_id(patient_id):
         patients = Patient.db_connection()
         return patients.find_one({"_id": patient_id})
+    
+    @staticmethod
+    def delete_patient_profile(patient_id):
+        doctor = Patient.db_connection()
+        doctor.delete_one({'_id': patient_id})
 
 
 
@@ -142,6 +148,12 @@ class Doctor:
 
         appointment.save_appointments()
     
+    @staticmethod
+    def delete_doctor_profile(slot_id):
+        doctor = Doctor.db_connection()
+        doctor.delete_one({'_id': slot_id})
+
+    
     def get_appointments(doctor_id):
         appointments = Appointment.db_connection()
         return list(appointments.find({"doctor_id": doctor_id}))
@@ -206,20 +218,93 @@ class Appointment:
 
 
     @staticmethod
-    def booking_appointment(appointment_id, patient_id):
+    def booking_appointment(appointment_id, patient_id, patient_name, date_time):
         appointments = Appointment.db_connection()
         appointment = appointments.find_one({"_id": ObjectId(appointment_id)})
+
+        if not appointment:
+            return None, "error_appointment_not_found"
+
+        # Check if the patient has already booked the appointment
+        for booking in appointment['bookings']:
+            if str(booking['patient_id']) == str(patient_id) and booking['status'] == 'Active':
+                return None, "error_already_booked"
+            
+            if str(booking['patient_id']) == str(patient_id) and booking['status'] == 'Canceled':
+                booking_number = int(booking['booking_number'])
+                result = appointments.update_one(
+                    {
+                        '_id': ObjectId(appointment_id), 
+                        'bookings.patient_id': ObjectId(patient_id), 
+                        'bookings.booking_number': booking_number
+                    }, 
+                    {
+                        '$set': {'bookings.$.status': 'Active'}
+                    } 
+                )
+
+
+                print(f"Modified Count: {result.modified_count}")
+                return booking_number, "Booking restored successfully"
+
+        
 
         if appointment and len(appointment['bookings']) < appointment['max_bookings']:
             booking_number = len(appointment['bookings']) + 1
             
             appointments.update_one(
                 {"_id": ObjectId(appointment_id)},
-                {"$push": {"bookings": {"patient_id": ObjectId(patient_id), "booking_number": booking_number}}}
+                {"$push": 
+                 {"bookings": {"patient_id": ObjectId(patient_id), "booking_number": booking_number, "patient_name": patient_name, "date_time": date_time, "status": 'Active'}}}
             )
 
-            return booking_number
-        return None
+            return booking_number, "Booking successful"
+    
+        return None, "error_slot_full"
+    
+
+    def get_bookings(patient_id):
+        appointments = Appointment.db_connection()
+        doctors = Doctor.db_connection()
+        appointments_with_patient_booking = appointments.find({'bookings.patient_id': ObjectId(patient_id)})
+
+        patient_bookings = []
+        for appointment in appointments_with_patient_booking:
+            doctor = doctors.find_one({'_id': ObjectId(appointment['doctor_id'])})
+            # Loop through all bookings in the appointment to find the ones matching the patient_id
+            for booking in appointment['bookings']:
+                if booking['patient_id'] == ObjectId(patient_id) and booking['status'] == 'Active':
+                    booking_info = {
+                        "appointment_id": str(appointment['_id']),
+                        "appointment_name": appointment['name'],
+                        "appointment_date": appointment['date'],
+                        "appointment_time": appointment['time'],
+                        "location": appointment['locationName'],
+                        "doctor": doctor['fullName'],
+                        "booking_number": booking['booking_number'],
+                        "patient_name": booking['patient_name']
+                    }
+                    patient_bookings.append(booking_info)
+
+        return patient_bookings
+    
+
+    def cancel_bookings(patient_id, appointment_id, booking_number):
+        appointments = Appointment.db_connection()
+
+        result = appointments.update_one(
+            {
+                '_id': ObjectId(appointment_id), 
+                'bookings.patient_id': ObjectId(patient_id), 
+                'bookings.booking_number': booking_number
+            }, 
+            {
+                '$set': {'bookings.$.status': 'Canceled'}
+            } 
+        )
+
+
+        return result
 
 
 
@@ -274,3 +359,40 @@ class Admin:
     def get_by_id(doctor_id):
         doctors = Admin.db_connection()
         return doctors.find_one({"_id": doctor_id})
+    
+
+
+class MLmodels:
+    def __init__(self, name, path, status='Inactive'):
+        self.name = name
+        self.path = path
+        self.status = status
+    
+    @staticmethod
+    def db_connection():
+        client = MongoClient('mongodb://localhost:27017/')
+        db = client['eye_health_care']
+        return db['mlmodels']
+    
+    def save(self):
+        ml_models = self.db_connection()
+        ml_models.insert_one(self.__dict__)
+        
+    @staticmethod
+    def get_all():
+        ml_models = MLmodels.db_connection()
+        return list(ml_models.find({}))
+    
+    def update(ml_model_id, update_data):
+        ml_models = MLmodels.db_connection()
+        ml_models.update_one({'_id': ml_model_id}, {'$set': update_data})
+    
+    @staticmethod
+    def get_by_id(ml_model_id):
+        ml_models = MLmodels.db_connection()
+        return ml_models.find_one({'_id': ml_model_id})
+    
+    @staticmethod
+    def delete_model(ml_model_id):
+        ml_models = MLmodels.db_connection()
+        ml_models.delete_one({'_id': ml_model_id})
